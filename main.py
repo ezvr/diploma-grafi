@@ -39,14 +39,6 @@ def returnDiplRoot():
     import sys
     return sys.path[0]
 
-def testPyPlot(data):
-    import matplotlib.pyplot as plt
-    fig, ax = plt.subplots()
-    x = list(map(lambda x: x[0], data))
-    y = list(map(lambda x: x[1], data))
-    ax.plot(x, y)
-    plt.savefig('foo.png')
-
 def crawlFolders(root):
     import os
     flatFolderList = []
@@ -176,9 +168,5 @@ def makeHeatingTimePlot(data,dir):
 
 if __name__ == '__main__':
     import dataMap
-    #filename = returnDiplRoot() + '\\meritve\\tc\\tc3,0.2w\\ogrevanje.csv'
-    #data = ingestTemporalLine(filename)
-    #testPyPlot(data)
-
     for dir in crawlFolders(dataMap.dataMap['meritveRoot']):
         processDir(dir, dataMap)
