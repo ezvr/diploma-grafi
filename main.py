@@ -61,6 +61,54 @@ def crawlFolders(root):
     return flatFolderList
 
 
+def is_integer(n):
+    # https://note.nkmk.me/en/python-check-int-float/
+    # This is for checking if string is an integer
+    try:
+        float(n)
+    except ValueError:
+        return False
+    else:
+        return float(n).is_integer()
+
+def processmarkerfiles(filelist):
+    import os
+    dataset = []
+    for file in filelist:
+        # Check if the last symbol in file name is a number, this means, there is no seperate heating and cooling measurement, and we don't need to concat data
+        name = os.path.splitext(file)[0]
+        if is_integer(name[-1]):
+            dataset.append(ingestTemporalLine(file))
+            continue
+        # If there is a letter instead of a number, then there is two sets of data that need to be joined
+        # First, we make sure, there is no bad data. We only accept suffix u for up-heating and d for down-cooling
+        if name[-1] != "u" or name[-1] != "d":
+            continue
+        raise NameError(f'Wrong marker suffix in directory on file {name}')
+        # If we are here, we have two csv files for each marker, we must join them
+        dataset.append()
+    return dataset
+
+def processheatingfiles(filelist):
+    import os
+    dataset = []
+    # Check if length of filelist is more than one
+    if len(filelist) == 1:
+        # there is just heating
+        dataset.append(ingestTemporalLine(filelist[0]))
+        return dataset
+    # If we are here, we need to concat the two files
+    # First we ingest each file
+    ogrevanjelist = ingestTemporalLine(filelist[1])
+    hlajenjelist = ingestTemporalLine(filelist[0])
+    # We must offset the second part by the first part amount
+    hlajenjelist = [[f[0]+ogrevanjelist[-1][0], f[1]] for f in hlajenjelist]
+    # We concat and append
+    dataset.append(ogrevanjelist+hlajenjelist)
+    return dataset
+
+
+
 def processDir(dir, dataMap):
     import os
     csvFiles = []
@@ -73,10 +121,10 @@ def processDir(dir, dataMap):
             if ext == ".csv":
                 csvFiles.append(entry)
 
-    # For each CSV file, determine the type, and process it
+    # For each CSV file, determine the type, and add it to a list
     markerlist = [f for f in csvFiles if f.name[0] == 'm']
     profilelist = [f for f in csvFiles if f.name[0] == 'p']
-    ogrevanje = [f for f in csvFiles if f.name == 'ogrevanje.csv']
+    ogrevanjelist = [f for f in csvFiles if f.name[0] == 'o' or f.name[0] == 'h']
 
     # Create new output dir
     pyroot = returnDiplRoot()
@@ -86,10 +134,14 @@ def processDir(dir, dataMap):
     outputpath = os.path.join(pyroot, 'output', dirrelpath)
     os.makedirs(outputpath, exist_ok=True)
 
+    # Process the data from csv files
+    markerdataset = processmarkerfiles(markerlist)
+    heatingdataset = processheatingfiles(ogrevanjelist)
+
     # Create the plots
     makemarkerplot(markerlist, outputpath)
     makeGradTimePlot(profilelist, outputpath)
-    makeHeatingTimePlot(ogrevanje, outputpath)
+    makeHeatingTimePlot(heatingdataset, outputpath)
 
 
 def makemarkerplot(data, directory):
@@ -176,13 +228,13 @@ def makeHeatingTimePlot(data,dir):
 
     # Process the data via an ingestion function
     print('Making Heating Time Plot in dir: ' + dir)
-    processeddata = [ingestTemporalLine(f) for f in data]
+    #processeddata = [ingestTemporalLine(f) for f in data]
 
     # Create a plot
     fig, ax = plt.subplots()
 
     # Add each of the csv datasets to the plot
-    for index, dataset in enumerate(processeddata):
+    for index, dataset in enumerate(data):
         x = list(map(lambda x: x[0], dataset))
         y = list(map(lambda x: x[1], dataset))
         ax.plot(x, y)
