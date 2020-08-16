@@ -122,7 +122,8 @@ def makemarkerplot(data, directory):
     ax.legend()
 
     # Save the plot
-    outputpath = os.path.join(directory, 'markerplot.png')
+    currentfolder = os.path.basename(dir)
+    outputpath = os.path.join(directory, f'markerplot-{currentfolder}.png')
     plt.savefig(outputpath)
     plt.close(fig)
 
@@ -158,7 +159,8 @@ def makeGradTimePlot(data,dir):
     ax.legend()
 
     # Save the plot
-    outputpath = os.path.join(dir, 'gradplot.png')
+    currentfolder = os.path.basename(dir)
+    outputpath = os.path.join(dir, f'gradplot-{currentfolder}.png')
     plt.savefig(outputpath)
     plt.close(fig)
 
@@ -197,7 +199,8 @@ def makeHeatingTimePlot(data,dir):
     ax.legend()
 
     # Save the plot
-    outputpath = os.path.join(dir, 'heatingplot.png')
+    currentfolder = os.path.basename(dir)
+    outputpath = os.path.join(dir, f'heatingplot-{currentfolder}.png')
     plt.savefig(outputpath)
     plt.close(fig)
 
