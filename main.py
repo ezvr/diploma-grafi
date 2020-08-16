@@ -16,7 +16,9 @@ def ingestTemporalLine(filename):
                 measurements.append(line[2:4])
     return measurements
 
+
 def ingestGradLine(filename):
+    import numpy as np
     # This function returns a cleaned up array from the FLIR profile csv export
     measurements = []
     with open(filename) as file:
@@ -32,12 +34,17 @@ def ingestGradLine(filename):
                 line[0] = float(line[0])
                 line[1] = float(line[1])
                 measurements.append(line[0:2])
+    # We must also remove any values that are lower than predecessors at the end, this is to remove the drop off on graphs
+    # maximum = np.argmax(measurements[round(len(measurements)*0.8) : len(measurements)])
+    # max(measurements[round(len(measurements)*0.8) : len(measurements)])
+  
     return measurements
 
 
 def returnDiplRoot():
     import sys
     return sys.path[0]
+
 
 def crawlFolders(root):
     import os
@@ -52,6 +59,7 @@ def crawlFolders(root):
 
     # return a flat list of all the directories
     return flatFolderList
+
 
 def processDir(dir, dataMap):
     import os
@@ -79,34 +87,42 @@ def processDir(dir, dataMap):
     os.makedirs(outputpath, exist_ok=True)
 
     # Create the plots
-    makeMarkerPlot(markerlist, outputpath)
+    makemarkerplot(markerlist, outputpath)
     makeGradTimePlot(profilelist, outputpath)
     makeHeatingTimePlot(ogrevanje, outputpath)
 
-def makeMarkerPlot(data,dir):
+
+def makemarkerplot(data, directory):
+    # This function will create a plot with stacked temporal lines
     import matplotlib.pyplot as plt
     import os
-    # This function will create a plot with stacked temporal lines
 
     # If there is no data, stop the work
     if len(data) == 0:
-        print('\033[93m No data for Marker plot in dir: \033[0m' + dir)
+        print('\033[93m No data for Marker plot in dir: \033[0m' + directory)
         return
     # Process the data via an ingestion function
-    print('Making Marker Plot in dir: ' + dir)
+    print('Making Marker Plot in dir: ' + directory)
     processeddata = [ingestTemporalLine(f) for f in data]
 
     # Create a plot
     fig, ax = plt.subplots()
 
     # Add each of the csv datasets to the plot
-    for dataset in processeddata:
+    for index, dataset in enumerate(processeddata):
         x = list(map(lambda x: x[0], dataset))
         y = list(map(lambda x: x[1], dataset))
-        ax.plot(x, y)
+        ax.plot(x, y, label=f'Točka {index+1}')
+
+    # Add the labels
+    ax.set_ylabel('Temperatura [°C]')
+    ax.set_xlabel('Čas [s]')
+
+    # Draw the legend
+    ax.legend()
 
     # Save the plot
-    outputpath = os.path.join(dir, 'markerplot.png')
+    outputpath = os.path.join(directory, 'markerplot.png')
     plt.savefig(outputpath)
     plt.close(fig)
 
@@ -128,10 +144,18 @@ def makeGradTimePlot(data,dir):
     fig, ax = plt.subplots()
 
     # Add each of the csv datasets to the plot
-    for dataset in processeddata:
+    for index, dataset in enumerate(processeddata):
         x = list(map(lambda x: x[0], dataset))
         y = list(map(lambda x: x[1], dataset))
-        ax.plot(x, y)
+        ax.plot(x, y,  label=f'Čas {index+1}')
+
+
+    # Add the labels
+    ax.set_ylabel('Temperatura [°C]')
+    ax.set_xlabel('Razdalja [pixel]')
+
+    # Draw the legend
+    ax.legend()
 
     # Save the plot
     outputpath = os.path.join(dir, 'gradplot.png')
@@ -156,10 +180,21 @@ def makeHeatingTimePlot(data,dir):
     fig, ax = plt.subplots()
 
     # Add each of the csv datasets to the plot
-    for dataset in processeddata:
+    for index, dataset in enumerate(processeddata):
         x = list(map(lambda x: x[0], dataset))
         y = list(map(lambda x: x[1], dataset))
         ax.plot(x, y)
+        ax.plot(x, y, label=f'Povprečna temperatura')
+
+        # Draw horizontal line at maximum value
+        ax.axhline(y=max(y), linewidth=1, label=f'Maksimalna temperatura ({round(max(y),0)}°C)', linestyle='--')
+
+    # Add the labels
+    ax.set_ylabel('Temperatura [°C]')
+    ax.set_xlabel('Čas [s]')
+
+    # Draw the legend
+    ax.legend()
 
     # Save the plot
     outputpath = os.path.join(dir, 'heatingplot.png')
