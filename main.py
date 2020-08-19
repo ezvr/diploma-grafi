@@ -82,11 +82,16 @@ def processmarkerfiles(filelist):
             continue
         # If there is a letter instead of a number, then there is two sets of data that need to be joined
         # First, we make sure, there is no bad data. We only accept suffix u for up-heating and d for down-cooling
-        if name[-1] != "u" or name[-1] != "d":
+        #if name[-1] != "u" or name[-1] != "d":
+       #     continue
+
+        if name[-1] == "u":
+            #just add the up measurement for now
+            dataset.append(ingestTemporalLine(file))
             continue
-        raise NameError(f'Wrong marker suffix in directory on file {name}')
+        #raise NameError(f'Wrong marker suffix in directory on file {name}')
         # If we are here, we have two csv files for each marker, we must join them
-        dataset.append()
+
     return dataset
 
 def processheatingfiles(filelist):
@@ -139,7 +144,7 @@ def processDir(dir, dataMap):
     heatingdataset = processheatingfiles(ogrevanjelist)
 
     # Create the plots
-    makemarkerplot(markerlist, outputpath)
+    makemarkerplot(markerdataset, outputpath)
     makeGradTimePlot(profilelist, outputpath)
     makeHeatingTimePlot(heatingdataset, outputpath)
 
@@ -155,13 +160,13 @@ def makemarkerplot(data, directory):
         return
     # Process the data via an ingestion function
     print('Making Marker Plot in dir: ' + directory)
-    processeddata = [ingestTemporalLine(f) for f in data]
+    #processeddata = [ingestTemporalLine(f) for f in data]
 
     # Create a plot
     fig, ax = plt.subplots()
 
     # Add each of the csv datasets to the plot
-    for index, dataset in enumerate(processeddata):
+    for index, dataset in enumerate(data):
         x = list(map(lambda x: x[0], dataset))
         y = list(map(lambda x: x[1], dataset))
         ax.plot(x, y, label=f'Točka {index+1}')
@@ -184,6 +189,10 @@ def makeGradTimePlot(data,dir):
     import os
     # This function will create a plot with stacked profile lines
 
+    # Define if we are currently making a plot for S10 or S9 pipe
+    currentfolder = os.path.basename(dir)
+    currentpipe = currentfolder[0]
+
     # If there is no data, stop the work
     if len(data) == 0:
         print('\033[93mNo data for Grad Time plot in dir: \033[0m' + dir)
@@ -197,21 +206,36 @@ def makeGradTimePlot(data,dir):
     fig, ax = plt.subplots()
 
     # Add each of the csv datasets to the plot
-    for index, dataset in enumerate(processeddata):
-        x = list(map(lambda x: x[0], dataset))
-        y = list(map(lambda x: x[1], dataset))
-        ax.plot(x, y,  label=f'Čas {index+1}')
+    # If we have a currentpipe that we know, use a specific loop
+    if currentpipe == 'd':
+        for index, dataset in enumerate(processeddata):
+            x = [ 72.5/len(dataset)*i for i,x in enumerate(dataset)]
+            y = list(map(lambda x: x[1], dataset))
+            ax.plot(x, y, label=f'Čas {index * 60} s')
+    elif currentpipe == 't':
+        for index, dataset in enumerate(processeddata):
+            x = [ 80/len(dataset)*i for i,x in enumerate(dataset)]
+            y = list(map(lambda x: x[1], dataset))
+            ax.plot(x, y, label=f'Čas {index * 60} s')
+    else:
+        for index, dataset in enumerate(processeddata):
+            x = list(map(lambda x: x[0], dataset))
+            y = list(map(lambda x: x[1], dataset))
+            ax.plot(x, y, label=f'Čas {index * 60} s')
+
+
+
 
 
     # Add the labels
     ax.set_ylabel('Temperatura [°C]')
-    ax.set_xlabel('Razdalja [pixel]')
+    ax.set_xlabel('Razdalja [mm]')
 
     # Draw the legend
     ax.legend()
 
     # Save the plot
-    currentfolder = os.path.basename(dir)
+
     outputpath = os.path.join(dir, f'gradplot-{currentfolder}.png')
     plt.savefig(outputpath)
     plt.close(fig)
@@ -241,7 +265,7 @@ def makeHeatingTimePlot(data,dir):
         ax.plot(x, y, label=f'Povprečna temperatura')
 
         # Draw horizontal line at maximum value
-        ax.axhline(y=max(y), linewidth=1, label=f'Maksimalna temperatura ({round(max(y),0)}°C)', linestyle='--')
+        ax.axhline(y=max(y), linewidth=1, label=f'Maksimalna temperatura ({round(max(y),1)}°C)', linestyle='--')
 
     # Add the labels
     ax.set_ylabel('Temperatura [°C]')
